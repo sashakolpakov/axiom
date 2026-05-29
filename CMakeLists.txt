@@ -192,6 +192,15 @@ endif()
 # External dependencies
 include(FetchContent)
 
+# Whole install ruleset is gated behind AXIOM_INSTALL so downstream
+# consumers that bundle axiom into a larger artifact (e.g. as a static
+# component of a single-archive distribution) can disable it cleanly.
+# Default ON preserves historical behaviour for standalone builds.
+# Declared here (before third-party subdirectories) because bundled static
+# dependencies must export themselves whenever axiom does — otherwise
+# install(EXPORT AxiomTargets) fails on the private link dependency.
+option(AXIOM_INSTALL "Generate install rules for axiom" ON)
+
 # ============================================================================
 # Google Highway (SIMD library) - via submodule
 # ============================================================================
@@ -199,7 +208,10 @@ include(FetchContent)
 set(HWY_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
 set(HWY_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(HWY_ENABLE_CONTRIB OFF CACHE BOOL "" FORCE)  # Math headers are header-only, no need to build contrib
-set(HWY_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+# hwy is linked privately into the (often static) axiom target. When axiom
+# generates its own export set, hwy must live in an export set too, so its
+# install rules track AXIOM_INSTALL.
+set(HWY_ENABLE_INSTALL ${AXIOM_INSTALL} CACHE BOOL "" FORCE)
 add_subdirectory(third_party/highway EXCLUDE_FROM_ALL)
 set(highway_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/highway)
 
@@ -653,7 +665,8 @@ if(AXIOM_HAS_OPENMP)
 endif()
 
 # Google Highway for cross-platform SIMD operations (always enabled)
-# Link privately since Highway is fetched and not installed
+# Linked privately; when AXIOM_INSTALL is on, hwy exports itself (see above)
+# so install(EXPORT AxiomTargets) can reference it.
 # Note: We only link hwy, not hwy_contrib (math headers are header-only)
 target_link_libraries(axiom PRIVATE hwy)
 target_compile_definitions(axiom PUBLIC AXIOM_USE_HIGHWAY)
@@ -709,12 +722,8 @@ endif()
 # ============================================================================
 # Installation
 # ============================================================================
-# Whole install ruleset is gated behind AXIOM_INSTALL so downstream
-# consumers that bundle axiom into a larger artifact (e.g. as a static
-# component of a single-archive distribution) can disable it cleanly.
-# Default ON preserves historical behaviour for standalone builds.
-option(AXIOM_INSTALL "Generate install rules for axiom" ON)
-
+# AXIOM_INSTALL is declared near the top of this file (before the bundled
+# third-party subdirectories) so their install/export rules can track it.
 if(AXIOM_INSTALL)
 include(GNUInstallDirs)
 

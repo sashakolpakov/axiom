@@ -2,6 +2,14 @@
 
 include(CMakeFindDependencyMacro)
 
+# Bundled static dependencies linked privately into axiom. They are exported
+# alongside axiom, so consumers must be able to resolve their imported targets
+# (hwy::hwy, mimalloc-static) referenced by AxiomTargets.cmake.
+find_dependency(hwy)
+if(@AXIOM_HAS_MIMALLOC@)
+    find_dependency(mimalloc)
+endif()
+
 # Find platform-specific dependencies
 # Metal/Foundation are only needed when the library was built with Metal support
 if(APPLE)
